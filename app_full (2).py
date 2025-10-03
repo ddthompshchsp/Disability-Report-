@@ -39,7 +39,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-logo_upload = st.file_uploader("Logo (PNG, )", type=["png"], key="logo_top")
+logo_upload = st.file_uploader, type=["png"], key="logo_top")
 logo_bytes_for_header = get_logo_bytes(logo_upload)
 c1, c2, c3 = st.columns([1,1,1])
 with c2:
