@@ -40,12 +40,12 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
+ts = datetime.now(ZoneInfo("America/Chicago")).strftime("%m/%d/%y %I:%M %p %Z")
 
 st.markdown(
     "<div class='hero'>"
     "<h1>HCHSP Disability Report (2025–2026)</h1>"
-    "<p class='sub'>Upload your GEHS Quick Report (.xlsx) to generate the formatted report, center totals, and dashboard.</p>"
+    "<p class='sub'>Upload your GoEngage Report (.xlsx) to generate the formatted report, center totals, and dashboard.</p>"
     f"<p class='muted'>Exported on: {ts}</p>"
     "</div>", unsafe_allow_html=True
 )
