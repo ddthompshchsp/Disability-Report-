@@ -39,6 +39,8 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+logo_bytes_for_header = get_logo_bytes(logo_upload)
 c1, c2, c3 = st.columns([1,1,1])
 with c2:
     if logo_bytes_for_header:
