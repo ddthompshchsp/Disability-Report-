@@ -40,7 +40,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-        st.image(logo_bytes_for_header, width=220)
 ts = datetime.now(ZoneInfo("America/Chicago")).strftime("%m/%d/%y %I:%M %p %Z")
 
 st.markdown(
