@@ -40,9 +40,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Upload a logo (optional, appears in header and export)
-logo_upload = st.file_uploader("Logo (PNG, optional – shown in header and export)", type=["png"], key="logo_top")
-logo_bytes_for_header = get_logo_bytes(logo_upload)
 
 c1, c2, c3 = st.columns([1,1,1])
 with c2:
@@ -62,8 +59,8 @@ st.markdown(
 # =========================
 # Upload Controls
 # =========================
-st.markdown("### Upload GEHS Quick Report.xlsx")
-uploaded = st.file_uploader("Upload the raw Quick Report (headers on row 5).", type=["xlsx"], label_visibility="collapsed")
+st.markdown("### Upload GoEngage Report.xlsx")
+uploaded = st.file_uploader("Upload the Disability Report from GoEngage (headers on row 5).", type=["xlsx"], label_visibility="collapsed")
 
 st.divider()
 
@@ -338,7 +335,7 @@ centers_list = sorted(df_summary["Center"].dropna().unique().tolist()) if "Cente
 sel_centers = st.multiselect("Filter by Center(s)", centers_list, default=centers_list, placeholder="Choose one or more centers...")
 df_view = df_summary[df_summary["Center"].isin(sel_centers)].copy() if sel_centers else df_summary.copy()
 
-tab_dash, tab_centers, tab_summary, tab_export = st.tabs(["📊 Dashboard (Preview)", "🏫 Center Totals", "🧾 Disability Summary", "⬇️ Export"])
+tab_dash, tab_centers, tab_summary, tab_export = st.tabs([" Dashboard (Preview)", "Center Totals", " Disability Summary", "⬇️ Export"])
 
 with tab_dash:
     st.caption("Full charts appear in the Excel export with labels and formatting.")
