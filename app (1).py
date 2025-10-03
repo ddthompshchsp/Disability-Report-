@@ -283,7 +283,7 @@ sel_centers = st.multiselect("Filter by Center(s)", centers_list, default=center
 df_view = df_summary[df_summary["Center"].isin(sel_centers)].copy() if sel_centers else df_summary.copy()
 
 # Tabs
-tab_dash, tab_centers, tab_summary, tab_export = st.tabs(["📊 Dashboard","🏫 Center Totals","🧾 Disability Summary","⬇️ Export"])
+tab_dash, tab_centers, tab_summary, tab_export = st.tabs(["Dashboard","Center Totals","Disability Summary","⬇️ Export"])
 
 with tab_dash:
     c1, c2, c3 = st.columns(3)
