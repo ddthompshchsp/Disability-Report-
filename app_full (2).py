@@ -13,7 +13,17 @@ ENROLLMENT = 2480
 TARGET = int(ENROLLMENT * 0.10)
 st.set_page_config(page_title="HCHSP Disability Report", layout="wide")
 
-
+# =========================
+# Determine logo bytes (uploaded takes priority; otherwise 'header_logo.png' in app folder)
+# =========================
+def get_logo_bytes(uploaded_logo):
+    if uploaded_logo is not None:
+        return uploaded_logo.getvalue()
+    # fallback to a local file if present
+    p = Path("header_logo.png")
+    if p.exists():
+        return p.read_bytes()
+    return None
 # =========================
 # Hero Header (Enrollment-style)
 # =========================
