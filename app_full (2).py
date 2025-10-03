@@ -41,12 +41,6 @@ st.markdown(
 )
 
 
-c1, c2, c3 = st.columns([1,1,1])
-with c2:
-    if logo_bytes_for_header:
-        st.image(logo_bytes_for_header, width=220)
-
-ts = datetime.now(ZoneInfo("America/Chicago")).strftime("%m/%d/%y %I:%M %p %Z")
 
 st.markdown(
     "<div class='hero'>"
