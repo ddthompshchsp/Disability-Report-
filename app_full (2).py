@@ -347,6 +347,5 @@ with tab_summary:
 
 with tab_export:
     # Use the same logo as header (uploaded or fallback file) for the export
-    export_logo_bytes = logo_bytes_for_header
     xlsx = build_excel(df_summary, df_centers, df_disab, auth_col_name, export_logo_bytes)
     st.download_button("Download Excel Export", data=xlsx, file_name=f"HCHSP_Disability_Export_{datetime.now(ZoneInfo('America/Chicago')).strftime('%Y%m%d_%H%M')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
