@@ -299,12 +299,12 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         if centers_n > 0:
             chart2 = wb.add_chart({"type": "bar"})
             chart2.add_series({
-                "name": "% of 10% Target (248)",
+                "Percentage of Enrolled Children w/ Disabilites by Campus"",
                 "categories": ["Center Totals", 6, 0, 6 + centers_n - 1, 0],
                 "values": ["Center Totals", 6, 3, 6 + centers_n - 1, 3],
                 "data_labels": {"value": True, "font": {"bold": True}},
             })
-            chart2.set_title({"name": Percentage of Enrolled Children w/ Disabilites by Campus"})
+            chart2.set_title({"Percentage of Enrolled Children w/ Disabilites by Campus"})
             chart2.set_legend({"none": True})
             ws3.insert_chart(12, 0, chart2, {"x_scale": 1.2, "y_scale": 1.2})
 
