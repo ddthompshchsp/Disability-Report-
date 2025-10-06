@@ -198,11 +198,11 @@ def process(file_bytes: bytes):
         centers = (
             clean.groupby(center_col).size().reset_index(name="Identified").sort_values("Identified", ascending=False)
         )
-        centers["% of 10% Targe for HCHSPt (248)"] = centers["Identified"] / ENROLLMENT
-        centers["Percentage until Campus reaches their 10% Goal(Internal Goal)"] = centers["Identified"] / TARGET
+        centers["] = centers["Identified"] / ENROLLMENT
+        centers["% Campus contribution to 10% Agency Goal"] = centers["Identified"] / TARGET
     else:
         centers = pd.DataFrame(
-            columns=["Center", "Identified", "% of 10% Target for HCHSP (248)", "% of 10% Target (248)"]
+            columns=["Center", "Identified", "% of Campus contribution to 10% Agency Goal)", "% of Enrollment"]
         )
 
     # Disability breakdown (unique per student)
@@ -270,7 +270,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         end = 6 + centers_n
         ws2.write(end + 2, 0, "AGENCY TOTAL", bold)
         ws2.write_formula(end + 2, 1, f"=SUBTOTAL(9,B7:B{end})", bold)
-        ws2.write(end + 3, 0, "% of 10% Target (248)", bold)
+        ws2.write(end + 3, 0, " % of Campus contribution to 10% Agency Goal (248)", bold)
         ws2.write_formula(end + 3, 1, f"=SUBTOTAL(9,B7:B{end})/248", pct_fmt)
         ws2.write(end + 4, 0, "% of Enrollment", bold)
         ws2.write_formula(end + 4, 1, f"=SUBTOTAL(9,B7:B{end})/2480", pct_fmt)
