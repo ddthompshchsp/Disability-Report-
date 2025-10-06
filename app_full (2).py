@@ -79,19 +79,21 @@ if uploaded is None:
 file_bytes = uploaded.read()
 
 # =========================
-# Verify correct report: 10443 only
+
+# Prefer GoEngage report #10443 
 # =========================
 try:
-    # Look for "10443" in the title block (first few rows, no header)
     peek = pd.read_excel(io.BytesIO(file_bytes), nrows=6, header=None, dtype=str)
-    if not peek.astype(str).apply(lambda col: col.str.contains("10443", na=False, case=False)).any().any():
-        st.error("🚫 This file does not appear to be the correct GoEngage Disability Report (#10443). Please upload the 10443 export.")
-        st.stop()
+    if peek.astype(str).apply(lambda col: col.str.contains("10443", na=False, case=False)).any().any():
+        st.caption("✅ Detected GoEngage Report #10443 — optimized processing applied.")
+        report_verified = True
     else:
-        st.caption("✅ Detected GoEngage Report #10443 — ready to process.")
+        st.caption("⚠️ Could not confirm report #10443 — proceeding with flexible matching.")
+        report_verified = False
 except Exception:
-    # If detection fails, let processing continue (the next step will still expect 10443 structure)
-    st.warning("⚠️ Could not automatically verify the report number. Proceeding, but this expects #10443.")
+    st.warning("⚠️ Could not read header to verify report number. Proceeding anyway.")
+    report_verified = False
+
 
 # =========================
 # Helpers
