@@ -198,11 +198,11 @@ def process(file_bytes: bytes):
         centers = (
             clean.groupby(center_col).size().reset_index(name="Identified").sort_values("Identified", ascending=False)
         )
-        centers["Percentage of 10% Goal per Campus (Internal Goal)"] = centers["Identified"] / ENROLLMENT
-        centers["% of 10% Target (248)"] = centers["Identified"] / TARGET
+        centers["% Campus contribution to 10% Agency Goal"] = centers["Identified"] / ENROLLMENT
+        centers["% of Enrollment"] = centers["Identified"] / TARGET
     else:
         centers = pd.DataFrame(
-            columns=["Center", "Identified", "Percentage of 10% Goal per Campus (Internal Goal)", "% of 10% Target (248)"]
+            columns=["Center", "Identified", " % Campus contribution to 10% Agency Goal% Campus contribution to 10% Agency Goal", "% of Enrollment (248)"]
         )
 
     # Disability breakdown (unique per student)
@@ -268,11 +268,11 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         centers_n = len(centers_df)
         ws2.autofilter(5, 0, 5 + centers_n, len(centers_df.columns) - 1)
         end = 6 + centers_n
-        ws2.write(end + 2, 0, "AGENCY TOTAL (Visible)", bold)
+        ws2.write(end + 2, 0, "AGENCY TOTAL COUNT", bold)
         ws2.write_formula(end + 2, 1, f"=SUBTOTAL(9,B7:B{end})", bold)
-        ws2.write(end + 3, 0, "% of 10% Target (248) — Visible", bold)
+        ws2.write(end + 3, 0, " % Campus contribution to 10% Agency Goal", bold)
         ws2.write_formula(end + 3, 1, f"=SUBTOTAL(9,B7:B{end})/248", pct_fmt)
-        ws2.write(end + 4, 0, "% of Enrollment — Visible", bold)
+        ws2.write(end + 4, 0, "% of Enrollment", bold)
         ws2.write_formula(end + 4, 1, f"=SUBTOTAL(9,B7:B{end})/2480", pct_fmt)
 
         # Sheet3: Dashboard
@@ -304,7 +304,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
                 "values": ["Center Totals", 6, 3, 6 + centers_n - 1, 3],
                 "data_labels": {"value": True, "font": {"bold": True}},
             })
-            chart2.set_title({"name": "Campus Contribution toward Program 10% Goal"})
+            chart2.set_title({"name": Percentage of Enrolled Children w/ Disabilites by Campus"})
             chart2.set_legend({"none": True})
             ws3.insert_chart(12, 0, chart2, {"x_scale": 1.2, "y_scale": 1.2})
 
