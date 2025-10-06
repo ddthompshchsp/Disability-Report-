@@ -198,11 +198,11 @@ def process(file_bytes: bytes):
             clean.groupby(center_col).size().reset_index(name="Identified").sort_values("Identified", ascending=False)
         )
         # keep these two names in this order so the chart points to the 4th column (index 3)
-        centers["% of Enrollment"] = centers["Identified"] / ENROLLMENT
-        centers["% of 10% Target (248)"] = centers["Identified"] / TARGET
+        centers["% of 10% Target (248)"] = centers["Identified"] / ENROLLMENT
+        centers["% of Enrollment"] = centers["Identified"] / TARGET
     else:
         centers = pd.DataFrame(
-            columns=["Center", "Identified", "% of Enrollment", "% of 10% Target (248)"]
+            columns=["Center", "Identified", "% of 10% Target (248)", "% of Enrollment"]
         )
 
     # Disability breakdown (unique per student)
@@ -271,9 +271,9 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         end = 6 + centers_n
         ws2.write(end + 2, 0, "AGENCY TOTAL COUNT", bold)
         ws2.write_formula(end + 2, 1, f"=SUBTOTAL(9,B7:B{end})", bold)
-        ws2.write(end + 3, 0, "% of 10% Target (248)", bold)
+        ws2.write(end + 3, 0, "% of Enrollment", bold)
         ws2.write_formula(end + 3, 1, f"=SUBTOTAL(9,B7:B{end})/248", pct_fmt)
-        ws2.write(end + 4, 0, "% of Enrollment", bold)
+        ws2.write(end + 4, 0, "% of 10% Target (248)", bold)
         ws2.write_formula(end + 4, 1, f"=SUBTOTAL(9,B7:B{end})/2480", pct_fmt)
 
         # Sheet3: Dashboard
@@ -300,7 +300,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         if centers_n > 0:
             chart2 = wb.add_chart({"type": "bar"})
             chart2.add_series({
-                "name": "% of 10% Target (248)",
+                "name": "% of Enrollment"Target (248)",
                 "categories": ["Center Totals", 6, 0, 6 + centers_n - 1, 0],
                 "values": ["Center Totals", 6, 3, 6 + centers_n - 1, 3],
                 "data_labels": {"value": True, "font": {"bold": True}},
