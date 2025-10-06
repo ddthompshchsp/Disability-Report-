@@ -1,4 +1,3 @@
-# app.py  — HCHSP Disability Report
 import base64
 import io
 import re
@@ -198,14 +197,16 @@ def process(file_bytes: bytes):
         centers = (
             clean.groupby(center_col).size().reset_index(name="Identified").sort_values("Identified", ascending=False)
         )
-        centers["% Campus contribution to 10% Agency Goal"] = centers["Identified"] / ENROLLMENT
-        centers["% of Enrollment"] = centers["Identified"] / TARGET
+        # keep these two names in this order so the chart points to the 4th column (index 3)
+        centers["% of Enrollment"] = centers["Identified"] / ENROLLMENT
+        centers["% of 10% Target (248)"] = centers["Identified"] / TARGET
     else:
         centers = pd.DataFrame(
-            columns=["Center", "Identified", " % Campus contribution to 10% Agency Goal% Campus contribution to 10% Agency Goal", "% of Enrollment (248)"]
+            columns=["Center", "Identified", "% of Enrollment", "% of 10% Target (248)"]
         )
 
     # Disability breakdown (unique per student)
+    identified_col = find_col(clean, [r"^IEP/IFSP Dis:Identified$", r"iep/ifsp.*identified"])
     if identified_col and identified_col in clean.columns:
         one_dis = clean[[identified_col]].copy()
         one_dis[identified_col] = one_dis[identified_col].apply(pick_one_disability).str.strip().str.title()
@@ -245,7 +246,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
             ws1.set_column(j, j, 22)
         ws1.autofilter(5, 0, 5 + len(summary_df), max(0, summary_df.shape[1] - 1))
         ws1.freeze_panes(6, 0)
-        if auth_col_name is not None:
+        if auth_col_name is not None and auth_col_name in summary_df.columns:
             auth_idx = list(summary_df.columns).index(auth_col_name)
             ws1.conditional_format(6, auth_idx, 6 + len(summary_df), auth_idx,
                                    {"type": "cell", "criteria": "equal to", "value": '"X"', "format": redx_fmt})
@@ -270,7 +271,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         end = 6 + centers_n
         ws2.write(end + 2, 0, "AGENCY TOTAL COUNT", bold)
         ws2.write_formula(end + 2, 1, f"=SUBTOTAL(9,B7:B{end})", bold)
-        ws2.write(end + 3, 0, " % Campus contribution to 10% Agency Goal", bold)
+        ws2.write(end + 3, 0, "% of 10% Target (248)", bold)
         ws2.write_formula(end + 3, 1, f"=SUBTOTAL(9,B7:B{end})/248", pct_fmt)
         ws2.write(end + 4, 0, "% of Enrollment", bold)
         ws2.write_formula(end + 4, 1, f"=SUBTOTAL(9,B7:B{end})/2480", pct_fmt)
@@ -299,26 +300,27 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         if centers_n > 0:
             chart2 = wb.add_chart({"type": "bar"})
             chart2.add_series({
-                "Percentage of Enrolled Children w/ Disabilites by Campus",
+                "name": "% of 10% Target (248)",
                 "categories": ["Center Totals", 6, 0, 6 + centers_n - 1, 0],
                 "values": ["Center Totals", 6, 3, 6 + centers_n - 1, 3],
                 "data_labels": {"value": True, "font": {"bold": True}},
             })
-            chart2.set_title({"Percentage of Enrolled Children w/ Disabilites by Campus"})
+            chart2.set_title({"name": "Percentage of Enrolled Children w/ Disabilities by Campus"})
             chart2.set_legend({"none": True})
             ws3.insert_chart(12, 0, chart2, {"x_scale": 1.2, "y_scale": 1.2})
 
         # Chart 3: Disability Type Breakdown
         if not disab_df.empty:
             drow = 12 + (centers_n // 2) + 8
-            disab_df.to_excel(writer, sheet_name="Dashboard", index=False, startrow=drow, startcol=0)
-            for j, h in enumerate(disab_df.columns):
+            disab_breakdown = disab_df.copy()
+            disab_breakdown.to_excel(writer, sheet_name="Dashboard", index=False, startrow=drow, startcol=0)
+            for j, h in enumerate(disab_breakdown.columns):
                 ws3.write(drow, j, h, header_fmt)
             chart3 = wb.add_chart({"type": "column"})
             chart3.add_series({
                 "name": "Count",
-                "categories": ["Dashboard", drow + 1, 0, drow + len(disab_df), 0],
-                "values": ["Dashboard", drow + 1, 1, drow + len(disab_df), 1],
+                "categories": ["Dashboard", drow + 1, 0, drow + len(disab_breakdown), 0],
+                "values": ["Dashboard", drow + 1, 1, drow + len(disab_breakdown), 1],
                 "data_labels": {"value": True, "font": {"bold": True}},
             })
             chart3.set_title({"name": "Disability Type Breakdown (Unique per Student)"})
