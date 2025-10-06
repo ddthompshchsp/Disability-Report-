@@ -1,4 +1,4 @@
-# app.py — HCHSP Disability Report (GoEngage #10443)
+# app.py  — HCHSP Disability Report
 import base64
 import io
 import re
@@ -15,7 +15,7 @@ import streamlit as st
 ENROLLMENT = 2480
 TARGET = int(ENROLLMENT * 0.10)
 
-st.set_page_config(page_title="HCHSP Disability Report — GoEngage #10443", layout="wide")
+st.set_page_config(page_title="HCHSP Disability Report", layout="wide")
 
 # =========================
 # Logo (local-only, no uploads)
@@ -50,13 +50,15 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
-ts_page = datetime.now(ZoneInfo("America/Chicago")).strftime("%m/%d/%y %I:%M %p %Z")
+
+ts = datetime.now(ZoneInfo("America/Chicago")).strftime("%m/%d/%y %I:%M %p %Z")
+
 st.markdown(
     "<div class='hero'>"
     f"{logo_img_tag_centered(LOGO_BYTES)}"
     "<h1>HCHSP Disability Report (2025–2026)</h1>"
-    "<p class='sub'>Upload your GoEngage #10443 export (.xlsx) to generate the formatted report, center totals, and dashboard.</p>"
-    f"<p class='muted'>Exported on: {ts_page}</p>"
+    "<p class='sub'>Upload your GoEngage Report (.xlsx) to generate the formatted report, center totals, and dashboard.</p>"
+    f"<p class='muted'>Exported on: {ts}</p>"
     "</div>",
     unsafe_allow_html=True,
 )
@@ -70,30 +72,7 @@ uploaded = st.file_uploader(
     type=["xlsx"],
     label_visibility="collapsed",
 )
-
-# Read once -> bytes; verify #10443 before processing
-if uploaded is None:
-    st.info("Upload the raw GEHS Quick Report #10443 (xlsx) to begin.")
-    st.stop()
-
-file_bytes = uploaded.read()
-
-# =========================
-
-# Prefer GoEngage report #10443 
-# =========================
-try:
-    peek = pd.read_excel(io.BytesIO(file_bytes), nrows=6, header=None, dtype=str)
-    if peek.astype(str).apply(lambda col: col.str.contains("10443", na=False, case=False)).any().any():
-        st.caption("✅ Detected GoEngage Report #10443 — optimized processing applied.")
-        report_verified = True
-    else:
-        st.caption("⚠️ Could not confirm report #10443 — proceeding with flexible matching.")
-        report_verified = False
-except Exception:
-    st.warning("⚠️ Could not read header to verify report number. Proceeding anyway.")
-    report_verified = False
-
+st.divider()
 
 # =========================
 # Helpers
@@ -121,12 +100,9 @@ def find_col(df: pd.DataFrame, patterns: list[str], prefer: str | None = None) -
                 return c
     return None
 
-# =========================
-# Main Processing
-# =========================
 @st.cache_data(show_spinner=False)
 def process(file_bytes: bytes):
-    # 10443 exports use headers on row 5 (index 4)
+    # Load with row 5 as header (index=4)
     df = pd.read_excel(io.BytesIO(file_bytes), header=4).dropna(how="all")
 
     # Normalize header names for key columns
@@ -138,20 +114,25 @@ def process(file_bytes: bytes):
     }
     df = df.rename(columns=lambda c: rename_exact.get(c, c))
 
-    # Locate key columns (specific to / consistent with 10443)
-    pid_col = "PID" if "PID" in df.columns else find_col(df, [r"^ST:\s*Participant PID$", r"\bparticipant pid\b", r"\bpid\b"])
-    identified_col = find_col(df, [r"^IEP/IFSP Dis:Identified$", r"iep/ifsp.*identified"])
-    iep_form_col = find_col(df, [r"^IEP/IFSP:Form Date$", r"iep.*form.*date"])
+    # Locate key columns
+    pid_col = "PID" if "PID" in df.columns else find_col(df, [r"\bparticipant pid\b", r"\bpid\b"])
+    identified_col = find_col(df, [r"^IEP/IFSP Dis:Identified$", r"iep/ifsp.*identified"], prefer="IEP/IFSP Dis:Identified")
+    iep_form_col = find_col(df, [r"^IEP/IFSP:Form Date$", r"iep.*form.*date"], prefer="IEP/IFSP:Form Date")
     auth_col = find_col(df, [r"authorization.*date", r"\bauthorization\b"])
-    center_col = "Center" if "Center" in df.columns else find_col(df, [r"^ST:\s*Center Name$", r"center name|campus|site name|location"])
+    center_col = "Center" if "Center" in df.columns else find_col(df, [r"center name|campus|site name|location"])
 
     # Normalize PID for dedupe
     df["PID_norm"] = (df.get(pid_col, df.iloc[:, 0])).apply(normalize_pid)
 
-    # TRUST THE SYSTEM REPORT — include all rows (no extra gate)
-    df["__IncludeFlag"] = True
+    # Inclusion: must have an IEP/IFSP Form Date
+    has_iep_date = (
+        pd.to_datetime(df[iep_form_col], errors="coerce").notna()
+        if iep_form_col in df.columns
+        else pd.Series(False, index=df.index)
+    )
+    df["__IncludeFlag"] = has_iep_date
 
-    # Merge duplicates to unique student rows; order-preserving union of values
+    # Merge duplicates: left->right, join with commas; format date-like columns
     date_like_cols = [c for c in df.columns if is_date_header(c)]
 
     def merge_group_ordered(g: pd.DataFrame) -> pd.Series:
@@ -182,7 +163,7 @@ def process(file_bytes: bytes):
     merged = df.groupby("PID_norm", dropna=False, as_index=False).apply(merge_group_ordered)
     clean = merged[merged["__AnyInclude"] == True].copy()
 
-    # Format Authorization column (X for missing)
+    # Authorization formatting (UI shows value; Excel adds red X via conditional formatting)
     if auth_col and auth_col in clean.columns:
         def fmt_auth(val):
             parts = [p.strip() for p in str(val).split(",") if p.strip()]
@@ -200,13 +181,14 @@ def process(file_bytes: bytes):
     the_rest = [c for c in df.columns if c not in front_cols and c not in ["__IncludeFlag"]]
     final_cols = front_cols + the_rest + [c for c in clean.columns if c not in front_cols + the_rest]
 
-    # Drop columns R, S, and column M (13th position) by position in the *final* view
+    # Drop Excel columns R & S by position and also drop column M (index 12)
     def excel_col_letter(idx_zero_based: int) -> str:
         letters, idx = "", idx_zero_based + 1
         while idx:
             idx, rem = divmod(idx - 1, 26)
             letters = chr(65 + rem) + letters
         return letters
+
     final_cols = [c for i, c in enumerate(final_cols) if excel_col_letter(i) not in ("R", "S")]
     if len(final_cols) >= 13:
         final_cols = [c for idx, c in enumerate(final_cols) if idx != 12]
@@ -216,10 +198,12 @@ def process(file_bytes: bytes):
         centers = (
             clean.groupby(center_col).size().reset_index(name="Identified").sort_values("Identified", ascending=False)
         )
-        centers["% of Enrollment"] = centers["Identified"] / ENROLLMENT
-        centers["% Campus Contribution to 10% Goal"] = centers["Identified"] / TARGET
+        centers["Percentage of 10% Goal per Campus (Internal Goal)"] = centers["Identified"] / ENROLLMENT
+        centers["% of 10% Target (248)"] = centers["Identified"] / TARGET
     else:
-        centers = pd.DataFrame(columns=["Center", "Identified", "% of Enrollment", "% Campus Contribution to 10% Goal"])
+        centers = pd.DataFrame(
+            columns=["Center", "Identified", "Percentage of 10% Goal per Campus (Internal Goal)", "% of 10% Target (248)"]
+        )
 
     # Disability breakdown (unique per student)
     if identified_col and identified_col in clean.columns:
@@ -232,9 +216,6 @@ def process(file_bytes: bytes):
 
     return clean[final_cols], centers, disab_breakdown, (auth_col if (auth_col and auth_col in final_cols) else None)
 
-# =========================
-# Excel Builder
-# =========================
 def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd.DataFrame,
                 auth_col_name: str | None, logo_bytes: bytes | None) -> io.BytesIO:
     import xlsxwriter
@@ -255,7 +236,7 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         # Sheet1: Disability Summary
         summary_df.to_excel(writer, sheet_name="Disability Summary", index=False, startrow=5)
         ws1 = writer.sheets["Disability Summary"]
-        ws1.merge_range(0, 1, 1, max(1, summary_df.shape[1] - 1), "HCHSP – Disability Report — #10443", title_fmt)
+        ws1.merge_range(0, 1, 1, max(1, summary_df.shape[1] - 1), "HCHSP – Disability Report", title_fmt)
         ws1.merge_range(2, 1, 2, max(1, summary_df.shape[1] - 1), f"Exported on: {ts_local}", sub_fmt)
         if logo_bytes:
             ws1.insert_image(0, 0, "logo.png", {"image_data": io.BytesIO(logo_bytes), "x_scale": 0.4, "y_scale": 0.4})
@@ -264,16 +245,15 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
             ws1.set_column(j, j, 22)
         ws1.autofilter(5, 0, 5 + len(summary_df), max(0, summary_df.shape[1] - 1))
         ws1.freeze_panes(6, 0)
-        if auth_col_name is not None and auth_col_name in summary_df.columns:
+        if auth_col_name is not None:
             auth_idx = list(summary_df.columns).index(auth_col_name)
             ws1.conditional_format(6, auth_idx, 6 + len(summary_df), auth_idx,
                                    {"type": "cell", "criteria": "equal to", "value": '"X"', "format": redx_fmt})
         lastrow = 6 + len(summary_df)
-        # Fixed totals that don't change with filters
         ws1.write(lastrow + 1, 0, "Agency Total Identified", bold)
-        ws1.write_formula(lastrow + 1, 1, f"=COUNTA(A7:A{lastrow})", bold)
+        ws1.write_formula(lastrow + 1, 1, f"=SUBTOTAL(3,A7:A{lastrow})", bold)
         ws1.write(lastrow + 2, 0, "Agency % of Enrollment (2480)", bold)
-        ws1.write_formula(lastrow + 2, 1, f"=COUNTA(A7:A{lastrow})/2480", pct_fmt)
+        ws1.write_formula(lastrow + 2, 1, f"=SUBTOTAL(3,A7:A{lastrow})/2480", pct_fmt)
 
         # Sheet2: Center Totals
         centers_df.to_excel(writer, sheet_name="Center Totals", index=False, startrow=5)
@@ -303,11 +283,8 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
             ws3.insert_image(0, 0, "logo.png", {"image_data": io.BytesIO(logo_bytes), "x_scale": 0.4, "y_scale": 0.4})
         ws3.write(4, 0, "Program Enrollment", bold); ws3.write(4, 1, ENROLLMENT, val_fmt)
         ws3.write(5, 0, "Target (10%)", bold);       ws3.write(5, 1, TARGET, val_fmt)
-        # Fixed count from Summary sheet (doesn't change if filtered there)
-        ws3.write(6, 0, "Current Identified", bold)
-        ws3.write_formula(6, 1, f"=COUNTA('Disability Summary'!A7:A{lastrow})", val_fmt)
-        ws3.write(7, 0, "% of Enrollment", bold)
-        ws3.write_formula(7, 1, f"=COUNTA('Disability Summary'!A7:A{lastrow})/2480", pct_fmt)
+        ws3.write(6, 0, "Current Identified", bold); ws3.write_formula(6, 1, f"=SUBTOTAL(3,'Disability Summary'!A7:A{lastrow})", val_fmt)
+        ws3.write(7, 0, "% of Enrollment", bold);    ws3.write_formula(7, 1, f"=SUBTOTAL(3,'Disability Summary'!A7:A{lastrow})/2480", pct_fmt)
 
         # Chart 1: Identified vs Target
         chart1 = wb.add_chart({"type": "column"})
@@ -321,7 +298,6 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
         centers_n = len(centers_df)
         if centers_n > 0:
             chart2 = wb.add_chart({"type": "bar"})
-            # Data in centers_df: ["Center","Identified","% of Enrollment","% Campus Contribution to 10% Goal"]
             chart2.add_series({
                 "name": "% of 10% Target (248)",
                 "categories": ["Center Totals", 6, 0, 6 + centers_n - 1, 0],
@@ -355,9 +331,13 @@ def build_excel(summary_df: pd.DataFrame, centers_df: pd.DataFrame, disab_df: pd
 # =========================
 # Process + UI
 # =========================
-df_summary, df_centers, df_disab, auth_col_name = process(file_bytes)
+if uploaded is None:
+    st.info("Upload the raw GEHS Quick Report (xlsx) to begin.")
+    st.stop()
 
-# KPIs (source of truth = deduped df)
+df_summary, df_centers, df_disab, auth_col_name = process(uploaded.read())
+
+# KPIs
 cA, cB, cC = st.columns(3)
 with cA:
     st.metric("Current Identified", len(df_summary))
